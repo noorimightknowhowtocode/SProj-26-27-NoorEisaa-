@@ -155,9 +155,7 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 </head>
 <body>
 
-<!-- ============ EDIT HERE: your names, university and links ============
-     Fill in the values in SITE below (at the bottom of this file).
-     Empty links are hidden; empty team shows a reminder only you will notice. -->
+<!-- Optional settings (affiliation, Gazebo link, input status) are in SITE at the bottom of this file. -->
 
 <header class="top">
   <div class="wrap">
@@ -170,7 +168,6 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
       <a href="#simulator">Simulator</a>
       <a href="#inputs">Real vs assumed</a>
       <a href="#gazebo">Gazebo</a>
-      <a href="#team">Team</a>
     </nav>
   </div>
 </header>
@@ -320,19 +317,6 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
     </div>
   </section>
 
-  <section class="leg" id="team">
-    <div class="wrap">
-      <div class="leghead">
-        <div class="legno">05</div>
-        <h2>Team and links</h2>
-        <p id="affil"></p>
-      </div>
-      <div class="two">
-        <div class="card"><h3>Team</h3><ul id="teamList"></ul></div>
-        <div class="card"><h3>Read more</h3><div class="links" id="moreLinks"></div><p class="todo" id="linksTodo" hidden>Add links in SITE at the bottom of index.html.</p></div>
-      </div>
-    </div>
-  </section>
 </main>
 
 <footer>
@@ -345,7 +329,6 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 <script>
 /* ===================== EDIT HERE ===================== */
 const SITE = {
-  team: [/* "Name One — role", "Name Two — role" */],
   affiliation: "",            // e.g. "Department of Electrical Engineering, Your University · Senior project 2026"
   links: {
     gazebo: "",               // e.g. "https://github.com/<you>/paddyscout-gz"
@@ -393,23 +376,11 @@ function renderContent() {
     return w ? `<i style="width:${w}%;background:${col[k]}" title="${LABEL[k]}"></i>` : "";
   }).join("");
 
-  const team = $("teamList");
-  if (SITE.team.length) {
-    for (const n of SITE.team) { const li = document.createElement("li"); li.textContent = n; team.appendChild(li); }
-  } else {
-    team.innerHTML = '<li class="todo">Add your names in SITE.team at the bottom of index.html.</li>';
-  }
-  $("affil").textContent = SITE.affiliation || "Senior project and research paper.";
   $("footAffil").textContent = SITE.affiliation || "Senior project";
 
   const mk = (el, href, text) => { if (!href) return 0; const a = document.createElement("a"); a.className = "btn"; a.href = href;
     a.target = "_blank"; a.rel = "noopener"; a.textContent = text; el.appendChild(a); return 1; };
   mk($("gazeboLinks"), SITE.links.gazebo, "Gazebo project on GitHub");
-  let n = mk($("moreLinks"), SITE.links.paper, "Paper");
-  n += mk($("moreLinks"), SITE.links.poster, "Poster");
-  n += mk($("moreLinks"), SITE.links.gazebo, "Gazebo code");
-  n += mk($("moreLinks"), SITE.links.simulatorRepo, "Simulator code");
-  $("linksTodo").hidden = n > 0;
 }
 renderContent();
 
