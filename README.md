@@ -7,21 +7,6 @@ lesion size → GSD → tiles per frame → processor throughput → allowable s
 
 > **Provenance:** every output is **SIMULATION**. All default inputs are placeholders until measured. The header badge shows how many inputs have been marked as measured.
 
-## Run it
-
-- **Online:** open the GitHub Pages link for this repo (see below). `index.html` is the project landing page with the simulator embedded; `simulator.html` is the simulator on its own.
-- **Edit the landing page:** your names, affiliation and links go in the `SITE` block at the bottom of `index.html`. Update `measuredCount` and each input's `status` as you measure.
-- **Offline (for presentations):** download Three.js r128 from
-  `https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js`
-  and save it as `vendor/three.min.js`. The page uses the CDN copy when online and falls back to the local copy offline. Fonts fall back to system fonts.
-
-## Publish on GitHub Pages
-
-1. Create a new repository on GitHub, e.g. `paddyscout-sim`.
-2. Upload the contents of this folder (`index.html`, `simulator.html`, `README.md`, `inputs/`, `vendor/`).
-3. Go to **Settings → Pages**, set **Source** to *Deploy from a branch*, branch `main`, folder `/ (root)`, and save.
-4. After a minute the simulator is live at `https://<your-username>.github.io/paddyscout-sim/`.
-
 ## What it models
 
 | Part | Model |
@@ -49,7 +34,4 @@ The discrete-event simulation and the closed-form model agree to within about 2 
 
 Terrain relief, camera tilt, lighting variation, gusts, plant occlusion, and pipelining of overhead with inference. These are the targets of the planned Gazebo + PX4 software-in-the-loop validation.
 
-## Related
 
-- Research blueprint: *PaddyScout — Hardware-Aware, Accuracy-Constrained UAV Crop Scouting*, v2.0 (16 Nov 2026).
-- Measurement checklist: what to measure to replace each placeholder.
