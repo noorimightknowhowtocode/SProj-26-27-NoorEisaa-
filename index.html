@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaddyScout</title>
+<meta name="description" content="Which onboard processor should a crop-scouting drone carry? PaddyScout compares boards by battery energy per hectare at a required disease-detection rate.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: an aerial survey sheet. A flight-plan hero (the drone's lanes over a diseased field),
+   then the argument in numbered survey legs, with the live simulator as the centrepiece. */
+:root{
+  --paper:#f2f4ef;      /* survey sheet, faintly green-grey */
+  --sheet:#ffffff;
+  --ink:#16222b;        /* chart ink */
+  --muted:#56636b;
+  --rule:#d5dbd3;
+  --field:#2f6b45;      /* crop green */
+  --signal:#d9652b;     /* aeronautical-chart orange: lanes, detections */
+  --signal-soft:rgba(217,101,43,.12);
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1613; --sheet:#151e1a; --ink:#e7ece6; --muted:#9aa8a0; --rule:#28342e;
+    --field:#6fbf87; --signal:#f08a4f; --signal-soft:rgba(240,138,79,.16); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1613; --sheet:#151e1a; --ink:#e7ece6; --muted:#9aa8a0; --rule:#28342e;
+  --field:#6fbf87; --signal:#f08a4f; --signal-soft:rgba(240,138,79,.16); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:400 18px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:.005em;line-height:1.02;text-wrap:balance;margin:0}
+.mono{font-family:var(--mono);font-size:.82em}
+
+/* top bar */
+header.top{border-bottom:1px solid var(--rule);background:var(--paper)}
+header.top .wrap{display:flex;align-items:center;gap:24px;min-height:60px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+nav.top{display:flex;gap:20px;margin-left:auto;flex-wrap:wrap;font-family:var(--display);font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+nav.top a{text-decoration:none;color:var(--muted)}
+nav.top a:hover{color:var(--ink)}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
+.kicker{font-family:var(--mono);font-size:13px;color:var(--signal);letter-spacing:.04em;margin-bottom:18px}
+.hero h1{font-size:clamp(40px,4.7vw,66px);font-weight:700;text-transform:uppercase;letter-spacing:-.005em}
+.hero h1 em{font-style:normal;color:var(--signal)}
+.lede{max-width:34em;margin:22px 0 0;font-size:20px;color:var(--ink)}
+.lede strong{font-weight:600}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.btn{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+  padding:11px 20px;border-radius:6px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn:hover{border-color:var(--signal)}
+.btn.primary:hover{background:var(--signal);border-color:var(--signal);color:#fff}
+.plan{position:relative;border:1px solid var(--rule);background:var(--sheet);border-radius:8px;padding:14px}
+.plan canvas{display:block;width:100%;aspect-ratio:1/1;border-radius:4px}
+.plan .legend{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+.plan .legend b{color:var(--signal);font-weight:500}
+
+/* the thesis numbers */
+.thesis{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--sheet)}
+.thesis .wrap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.eq{padding:26px 24px 26px 0;display:grid;gap:6px}
+.eq + .eq{padding-left:24px;border-left:1px solid var(--rule)}
+.eq .f{font-family:var(--mono);font-size:17px;color:var(--ink)}
+.eq .f i{color:var(--signal);font-style:normal}
+.eq p{margin:0;font-size:16px;color:var(--muted)}
+
+/* sections */
+section.leg{padding:72px 0 8px}
+.leghead{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px 20px;align-items:baseline;margin-bottom:28px}
+.legno{font-family:var(--mono);font-size:13px;color:var(--signal);border-top:2px solid var(--signal);padding-top:8px}
+.leghead h2{font-size:clamp(32px,4vw,48px);text-transform:uppercase}
+.leghead p{grid-column:2;margin:6px 0 0;max-width:40em;color:var(--muted)}
+
+/* how it works */
+.flow{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:20px;overflow-x:auto}
+.flow svg{display:block;min-width:820px;width:100%;height:auto}
+.flow text{font-family:var(--body)}
+.flow .t{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:.04em;text-transform:uppercase;fill:var(--ink)}
+.flow .s{font-size:14px;fill:var(--muted)}
+.flow .n{font-family:var(--mono);font-size:12px;fill:var(--signal)}
+.flow rect.box{fill:none;stroke:var(--ink);stroke-width:1.25}
+.flow rect.hot{fill:var(--signal-soft);stroke:var(--signal);stroke-width:2}
+.flow path{stroke:var(--muted);stroke-width:1.5;fill:none}
+.flow .back{stroke:var(--signal);stroke-dasharray:5 5}
+
+/* simulator */
+.simframe{border:1px solid var(--rule);border-radius:8px;background:var(--sheet);overflow:hidden}
+.simbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.simbar .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 4px var(--signal-soft)}
+.simbar .lbl{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.simbar .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.simbar .btn{font-size:15px;padding:6px 12px}
+.simframe iframe{display:block;width:100%;height:min(900px,88vh);border:0;background:var(--paper)}
+.simframe:fullscreen{border-radius:0;display:flex;flex-direction:column}
+.simframe:fullscreen iframe{flex:1;height:auto}
+.note{font-size:15px;color:var(--muted);margin:12px 0 0}
+
+/* real vs assumed */
+.status{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:40px;align-items:start}
+.meter{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:24px}
+.meter .big{font-family:var(--display);font-weight:700;font-size:72px;line-height:1;font-variant-numeric:tabular-nums}
+.meter .big span{color:var(--muted);font-size:40px}
+.meter p{margin:8px 0 0;font-size:16px;color:var(--muted)}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:18px;background:var(--rule)}
+.bar i{display:block;height:100%}
+table.inputs{width:100%;border-collapse:collapse;font-size:16px}
+table.inputs th{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 10px 10px 0;border-bottom:1.5px solid var(--ink)}
+table.inputs td{padding:11px 10px 11px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.pill{display:inline-block;font-family:var(--mono);font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.pill.spec{color:var(--field);border-color:var(--field)}
+.pill.assumed{color:var(--signal);border-color:var(--signal);background:var(--signal-soft)}
+.pill.measured{color:var(--paper);background:var(--field);border-color:var(--field)}
+.pill.exact{color:var(--ink);border-color:var(--ink)}
+
+/* gazebo + team */
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:24px;display:grid;gap:10px;align-content:start}
+.card h3{font-size:26px;text-transform:uppercase}
+.card p{margin:0;font-size:17px}
+.card ul{margin:0;padding-left:20px;font-size:17px}
+.card .links{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.card .links .btn{font-size:15px;padding:7px 14px}
+.todo{font-family:var(--mono);font-size:13px;color:var(--signal)}
+footer{margin-top:80px;border-top:1px solid var(--rule);padding:28px 0 40px;color:var(--muted);font-size:15px}
+footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+
+@media (max-width:880px){
+  .hero .wrap,.status,.two{grid-template-columns:1fr}
+  .thesis .wrap{grid-template-columns:1fr}
+  .eq,.eq + .eq{padding:18px 0;border-left:0}
+  .eq + .eq{border-top:1px solid var(--rule)}
+  .leghead{grid-template-columns:1fr}
+  .leghead p{grid-column:1}
+  nav.top{margin-left:0}
+}
+@media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto!important} }
+</style>
+</head>
+<body>
+
+<!-- ============ EDIT HERE: your names, university and links ============
+     Fill in the values in SITE below (at the bottom of this file).
+     Empty links are hidden; empty team shows a reminder only you will notice. -->
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="PaddyScout home">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6v14M11 20V6M16 6v14M21 20V6" stroke="var(--signal)" stroke-width="1.6" fill="none"/></svg>
+      PaddyScout
+    </a>
+    <nav class="top" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#simulator">Simulator</a>
+      <a href="#inputs">Real vs assumed</a>
+      <a href="#gazebo">Gazebo</a>
+      <a href="#team">Team</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <div class="kicker">UAV crop-disease scouting · onboard AI · mission energy</div>
+        <h1>Which processor should a scouting drone <em>carry?</em></h1>
+        <p class="lede">The fastest AI board is not always the best one to fly. PaddyScout compares onboard processors by <strong>battery energy per hectare at a required disease-detection rate</strong>, because a faster board only helps if the camera and the aircraft can use the speed.</p>
+        <div class="actions">
+          <a class="btn primary" href="#simulator">Try the simulator</a>
+          <a class="btn" href="#how">How it works</a>
+        </div>
+      </div>
+      <figure class="plan" style="margin:0">
+        <canvas id="plan" width="560" height="560" role="img" aria-label="A drone flying survey lanes over a field, detecting disease patches inside its camera footprint"></canvas>
+        <figcaption class="legend">
+          <span>100 m field · 15 m altitude · lanes 60% overlap</span>
+          <span><b id="found">0</b> of <span id="total">0</span> lesions seen</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <div class="thesis">
+    <div class="wrap">
+      <div class="eq">
+        <div class="f">GSD = <i>h</i> · <i>p</i> / <i>f</i></div>
+        <p>Altitude sets how many pixels land on a 3 cm lesion, and how many image tiles each photo makes.</p>
+      </div>
+      <div class="eq">
+        <div class="f">v<sub>max</sub> = min(aircraft, camera, <i>compute</i>)</div>
+        <p>The drone can only fly as fast as its slowest link. Past that point, a faster board adds weight and watts for nothing.</p>
+      </div>
+      <div class="eq">
+        <div class="f">Wh/ha at recall ≥ <i>ρ</i></div>
+        <p>The score: the energy to survey one hectare while still finding the required share of disease.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="leg" id="how">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">01</div>
+        <h2>How it works</h2>
+        <p>Explore broadly with a fast model, confirm the important cases in a realistic one, and replace every assumed input with a measurement.</p>
+      </div>
+      <div class="flow">
+        <svg viewBox="0 0 1100 300" role="img" aria-label="Measured inputs feed a fast simulator, whose best configurations are confirmed in Gazebo and then by a real flight">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--signal)"/></marker></defs>
+          <g><rect class="box" x="10" y="60" width="230" height="150" rx="8"/>
+            <text class="n" x="28" y="88">STEP 1</text><text class="t" x="28" y="116">Measure</text>
+            <text class="s" x="28" y="144">Board speed and power,</text><text class="s" x="28" y="164">model recall vs pixels,</text><text class="s" x="28" y="184">camera, hover power</text></g>
+          <g><rect class="hot" x="290" y="60" width="250" height="150" rx="8"/>
+            <text class="n" x="308" y="88">STEP 2 · BROWSER</text><text class="t" x="308" y="116">Explore</text>
+            <text class="s" x="308" y="144">Every board, model, altitude</text><text class="s" x="308" y="164">and speed: thousands of</text><text class="s" x="308" y="184">missions per second</text></g>
+          <g><rect class="box" x="590" y="60" width="250" height="150" rx="8"/>
+            <text class="n" x="608" y="88">STEP 3 · GAZEBO + PX4</text><text class="t" x="608" y="116">Confirm</text>
+            <text class="s" x="608" y="144">Real autopilot, rendered</text><text class="s" x="608" y="164">camera frames, the real</text><text class="s" x="608" y="184">detector, 3D maize field</text></g>
+          <g><rect class="box" x="890" y="60" width="200" height="150" rx="8"/>
+            <text class="n" x="908" y="88">STEP 4 · FIELD</text><text class="t" x="908" y="116">Validate</text>
+            <text class="s" x="908" y="144">One real flight logs</text><text class="s" x="908" y="164">power and frame timing</text><text class="s" x="908" y="184">against the prediction</text></g>
+          <path d="M240 135H286" marker-end="url(#ar)"/><path d="M540 135H586" marker-end="url(#ar)"/><path d="M840 135H886" marker-end="url(#ar)"/>
+          <path class="back" d="M990 210V262H125V214" marker-end="url(#ar2)"/>
+          <text class="s" x="557" y="284" text-anchor="middle">differences found in Gazebo or the field go back in as corrected inputs</text>
+          <text class="s" x="415" y="40" text-anchor="middle">best setup per board</text>
+          <path d="M415 46V56" marker-end="url(#ar)"/>
+          <text class="s" x="715" y="40" text-anchor="middle">predicted vs simulated, per board</text>
+          <path d="M715 46V56" marker-end="url(#ar)"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="leg" id="simulator">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">02</div>
+        <h2>The mission simulator</h2>
+        <p>Pick a board, a model, an altitude and a speed, and watch the drone survey a diseased field. The panels below the 3D view show the roofline, the recall–energy trade-off, and which board wins where.</p>
+      </div>
+      <div class="simframe" id="simframe">
+        <div class="simbar">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="lbl">PaddyScout Mission Simulator · simulation estimates</span>
+          <div class="sp">
+            <button class="btn" id="fs" type="button">Full screen</button>
+            <a class="btn" href="simulator.html" target="_blank" rel="noopener">Open in new tab</a>
+          </div>
+        </div>
+        <iframe src="simulator.html" title="PaddyScout Mission Simulator" allow="fullscreen; clipboard-write"></iframe>
+      </div>
+      <p class="note">Runs entirely in your browser. Results are simulation estimates; the next section says which inputs are measured.</p>
+    </div>
+  </section>
+
+  <section class="leg" id="inputs">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">03</div>
+        <h2>What is real, what is assumed</h2>
+        <p>The geometry and physics are exact or textbook. The inputs are placeholders until we measure them, and every one is labelled.</p>
+      </div>
+      <div class="status">
+        <div class="meter">
+          <div class="big"><span id="nMeasured">0</span><span> / </span><span id="nInputs">24</span></div>
+          <p>inputs measured by the team so far. Results are simulation estimates until the high-impact inputs are measured.</p>
+          <div class="bar" id="bar" aria-hidden="true"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="inputs">
+            <thead><tr><th>Part</th><th>Status</th><th>Basis</th></tr></thead>
+            <tbody id="inputRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="leg" id="gazebo">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">04</div>
+        <h2>Gazebo confirmation</h2>
+        <p>The fast simulator simplifies flight and imaging. Gazebo checks whether those simplifications change which board wins.</p>
+      </div>
+      <div class="two">
+        <div class="card">
+          <h3>What Gazebo adds</h3>
+          <ul>
+            <li>The PX4 autopilot flying the survey: acceleration, turns, wind, altitude-hold error</li>
+            <li>Rendered camera frames with lens blur, noise, rolling shutter and exposure</li>
+            <li>The real detector on those frames, or the real board over the network</li>
+            <li>3D maize with lesions cut from real held-out Cornell drone photos</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Same field, both tools</h3>
+          <p>Any field in the simulator can be exported and rebuilt in Gazebo, lesion for lesion. A Python port of the simulator's maths matches the browser exactly, so both tools start from identical inputs and the results can be compared directly.</p>
+          <div class="links" id="gazeboLinks"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="leg" id="team">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">05</div>
+        <h2>Team and links</h2>
+        <p id="affil"></p>
+      </div>
+      <div class="two">
+        <div class="card"><h3>Team</h3><ul id="teamList"></ul></div>
+        <div class="card"><h3>Read more</h3><div class="links" id="moreLinks"></div><p class="todo" id="linksTodo" hidden>Add links in SITE at the bottom of index.html.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>PaddyScout · <span id="footAffil"></span></span>
+    <span>All figures on this site are simulation estimates unless marked measured.</span>
+  </div>
+</footer>
+
+<script>
+/* ===================== EDIT HERE ===================== */
+const SITE = {
+  team: [/* "Name One — role", "Name Two — role" */],
+  affiliation: "",            // e.g. "Department of Electrical Engineering, Your University · Senior project 2026"
+  links: {
+    gazebo: "",               // e.g. "https://github.com/<you>/paddyscout-gz"
+    simulatorRepo: "",        // e.g. "https://github.com/<you>/paddyscout-sim"
+    paper: "",
+    poster: ""
+  },
+  // Update as you measure. status: "measured" | "spec" | "exact" | "assumed"
+  inputs: [
+    {part: "Board speed, overhead and power (4 boards)", status: "assumed", basis: "Estimates from vendor figures and public benchmarks", weight: 5},
+    {part: "Model recall vs pixels across a lesion", status: "assumed", basis: "Logistic placeholder until the held-out curve is entered", weight: 4},
+    {part: "Camera sensor and lens", status: "spec", basis: "Sony IMX477 datasheet, 6 mm lens; GSD check pending", weight: 2},
+    {part: "Airframe mass and rotor efficiency", status: "assumed", basis: "Typical X500-class values", weight: 3},
+    {part: "Hover power calibration", status: "assumed", basis: "Not yet logged", weight: 2},
+    {part: "Battery capacity", status: "spec", basis: "4S 5000 mAh rating, 74 Wh", weight: 1},
+    {part: "Survey geometry, lanes, tiles, roofline", status: "exact", basis: "Camera geometry and arithmetic", weight: 4},
+    {part: "Gazebo flight", status: "exact", basis: "PX4 autopilot code in simulated physics", weight: 2},
+    {part: "Gazebo camera model", status: "assumed", basis: "Pi HQ-like defaults until test photos are taken", weight: 2}
+  ],
+  measuredCount: 0, totalInputs: 24
+};
+/* ===================================================== */
+
+const $ = id => document.getElementById(id);
+const LABEL = {measured: "Measured", spec: "Spec sheet", exact: "Exact", assumed: "Assumed"};
+
+function renderContent() {
+  $("nMeasured").textContent = SITE.measuredCount;
+  $("nInputs").textContent = SITE.totalInputs;
+  const rows = $("inputRows");
+  rows.innerHTML = "";
+  for (const r of SITE.inputs) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td></td><td><span class="pill ${r.status}">${LABEL[r.status] || r.status}</span></td><td></td>`;
+    tr.cells[0].textContent = r.part;
+    tr.cells[2].textContent = r.basis;
+    rows.appendChild(tr);
+  }
+  const tot = SITE.inputs.reduce((s, r) => s + r.weight, 0);
+  const css = getComputedStyle(document.documentElement);
+  const col = {measured: css.getPropertyValue("--field"), spec: "color-mix(in srgb, var(--field) 45%, transparent)",
+               exact: "var(--ink)", assumed: "var(--signal)"};
+  $("bar").innerHTML = ["measured", "exact", "spec", "assumed"].map(k => {
+    const w = SITE.inputs.filter(r => r.status === k).reduce((s, r) => s + r.weight, 0) / tot * 100;
+    return w ? `<i style="width:${w}%;background:${col[k]}" title="${LABEL[k]}"></i>` : "";
+  }).join("");
+
+  const team = $("teamList");
+  if (SITE.team.length) {
+    for (const n of SITE.team) { const li = document.createElement("li"); li.textContent = n; team.appendChild(li); }
+  } else {
+    team.innerHTML = '<li class="todo">Add your names in SITE.team at the bottom of index.html.</li>';
+  }
+  $("affil").textContent = SITE.affiliation || "Senior project and research paper.";
+  $("footAffil").textContent = SITE.affiliation || "Senior project";
+
+  const mk = (el, href, text) => { if (!href) return 0; const a = document.createElement("a"); a.className = "btn"; a.href = href;
+    a.target = "_blank"; a.rel = "noopener"; a.textContent = text; el.appendChild(a); return 1; };
+  mk($("gazeboLinks"), SITE.links.gazebo, "Gazebo project on GitHub");
+  let n = mk($("moreLinks"), SITE.links.paper, "Paper");
+  n += mk($("moreLinks"), SITE.links.poster, "Poster");
+  n += mk($("moreLinks"), SITE.links.gazebo, "Gazebo code");
+  n += mk($("moreLinks"), SITE.links.simulatorRepo, "Simulator code");
+  $("linksTodo").hidden = n > 0;
+}
+renderContent();
+
+/* full screen for the simulator */
+$("fs").addEventListener("click", () => {
+  const el = $("simframe");
+  if (document.fullscreenElement) { document.exitFullscreen(); return; }
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => window.open("simulator.html", "_blank"));
+  else window.open("simulator.html", "_blank");
+});
+document.addEventListener("fullscreenchange", () => { $("fs").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; });
+
+/* hero: a flight plan over a diseased field */
+(function () {
+  const cv = $("plan"), ctx = cv.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let rnd = 20261204;
+  const r = () => ((rnd = (rnd * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const N = 560, M = 28;                      // canvas px, margin
+  const F = N - 2 * M;                        // field side in px (100 m)
+  const fw = F * 0.215, fh = F * 0.16;        // footprint ~21.5 x 16 m at 15 m altitude
+  const sp = fw * 0.4;                        // lane spacing with 60% overlap
+  const lanes = Math.ceil((F - fw) / sp) + 1;
+  const foci = Array.from({length: 7}, () => ({x: M + r() * F, y: M + r() * F, s: 10 + r() * 22}));
+  const les = [];
+  for (const f of foci) for (let k = 0, n = 10 + (r() * 22 | 0); k < n; k++) {
+    const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const x = f.x + g() * f.s, y = f.y + g() * f.s;
+    if (x > M && x < M + F && y > M && y < M + F) les.push({x, y, seen: false});
+  }
+  $("total").textContent = les.length;
+  // path: lanes south->north and back, as waypoints
+  const pts = [];
+  for (let i = 0; i < lanes; i++) {
+    const x = M + fw / 2 + Math.min(i * sp, F - fw);
+    const y0 = M + F - fh / 2, y1 = M + fh / 2;
+    if (i % 2 === 0) pts.push([x, y0], [x, y1]); else pts.push([x, y1], [x, y0]);
+  }
+  const segs = []; let L = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push({a: pts[i - 1], b: pts[i], l: d, s: L}); L += d; }
+  const at = t => { const d = t * L; const s = segs.find(q => d <= q.s + q.l) || segs[segs.length - 1]; const u = (d - s.s) / s.l;
+    return [s.a[0] + (s.b[0] - s.a[0]) * u, s.a[1] + (s.b[1] - s.a[1]) * u]; };
+  const css = () => { const c = getComputedStyle(document.documentElement);
+    return {ink: c.getPropertyValue("--ink").trim(), muted: c.getPropertyValue("--muted").trim(), rule: c.getPropertyValue("--rule").trim(),
+            field: c.getPropertyValue("--field").trim(), sig: c.getPropertyValue("--signal").trim(), sheet: c.getPropertyValue("--sheet").trim()}; };
+  const cover = document.createElement("canvas"); cover.width = cover.height = N;
+  const cc = cover.getContext("2d");
+  let t = 0.38, found = 0, lastStamp = 0;
+  function stamp(p) {                                       // mark footprint as covered, detect lesions inside
+    cc.fillRect(p[0] - fw / 2, p[1] - fh / 2, fw, fh);
+    for (const l of les) if (!l.seen && Math.abs(l.x - p[0]) < fw / 2 && Math.abs(l.y - p[1]) < fh / 2 && r() < 0.86) { l.seen = true; found++; }
+  }
+  function reset() { cc.clearRect(0, 0, N, N); for (const l of les) l.seen = false; found = 0; }
+  function prefill(upto) { reset(); cc.fillStyle = "#000"; for (let s = 0; s <= upto; s += 0.0025) stamp(at(s)); }
+  function draw() {
+    const c = css();
+    ctx.fillStyle = c.sheet; ctx.fillRect(0, 0, N, N);
+    // crop rows
+    ctx.strokeStyle = c.field; ctx.globalAlpha = 0.28; ctx.lineWidth = 1;
+    for (let x = M + 3; x < M + F; x += 7) { ctx.beginPath(); ctx.moveTo(x, M); ctx.lineTo(x, M + F); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    // coverage tint
+    ctx.save(); ctx.globalAlpha = 0.13; ctx.drawImage(tint(c.sig), 0, 0); ctx.restore();
+    // field border + scale
+    ctx.strokeStyle = c.ink; ctx.lineWidth = 1.2; ctx.strokeRect(M, M, F, F);
+    ctx.fillStyle = c.muted; ctx.font = "11px JetBrains Mono, monospace";
+    ctx.fillText("0", M - 4, M + F + 16); ctx.fillText("100 m", M + F - 34, M + F + 16);
+    // planned lanes
+    ctx.strokeStyle = c.sig; ctx.setLineDash([4, 5]); ctx.lineWidth = 1; ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.moveTo(...pts[0]); for (const p of pts.slice(1)) ctx.lineTo(...p); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    // lesions
+    for (const l of les) {
+      ctx.beginPath(); ctx.arc(l.x, l.y, l.seen ? 2.6 : 2, 0, 7);
+      ctx.fillStyle = l.seen ? c.sig : c.ink; ctx.globalAlpha = l.seen ? 1 : 0.45; ctx.fill(); ctx.globalAlpha = 1;
+      if (l.seen) { ctx.beginPath(); ctx.arc(l.x, l.y, 5.5, 0, 7); ctx.strokeStyle = c.sig; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+    // drone + footprint
+    const p = at(t);
+    ctx.strokeStyle = c.sig; ctx.lineWidth = 1.6; ctx.strokeRect(p[0] - fw / 2, p[1] - fh / 2, fw, fh);
+    ctx.fillStyle = c.sig; ctx.globalAlpha = 0.08; ctx.fillRect(p[0] - fw / 2, p[1] - fh / 2, fw, fh); ctx.globalAlpha = 1;
+    ctx.strokeStyle = c.ink; ctx.lineWidth = 2;
+    for (const [dx, dy] of [[-7, -7], [7, -7], [-7, 7], [7, 7]]) { ctx.beginPath(); ctx.arc(p[0] + dx, p[1] + dy, 4, 0, 7); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(p[0] - 7, p[1] - 7); ctx.lineTo(p[0] + 7, p[1] + 7); ctx.moveTo(p[0] + 7, p[1] - 7); ctx.lineTo(p[0] - 7, p[1] + 7); ctx.stroke();
+    $("found").textContent = found;
+  }
+  let tintCache = null, tintCol = "";
+  function tint(col) {                                     // coverage mask coloured with the signal colour
+    if (!tintCache) { tintCache = document.createElement("canvas"); tintCache.width = tintCache.height = N; }
+    const tc = tintCache.getContext("2d");
+    tc.globalCompositeOperation = "source-over"; tc.clearRect(0, 0, N, N); tc.drawImage(cover, 0, 0);
+    tc.globalCompositeOperation = "source-in"; tc.fillStyle = col; tc.fillRect(0, 0, N, N);
+    return tintCache;
+  }
+  cc.fillStyle = "#000";
+  prefill(t);
+  draw();
+  if (reduce) return;
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    t += dt / 34;                                      // one survey in ~34 s
+    if (t >= 1) { t = 0; reset(); cc.fillStyle = "#000"; }
+    stamp(at(t));
+    draw();
+    requestAnimationFrame(frame);
+  }
+  const io = new IntersectionObserver(es => { if (es[0].isIntersecting && !running) { running = true; last = performance.now(); requestAnimationFrame(frame); } });
+  let running = false;
+  io.observe(cv);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+})();
+</script>
+</body>
+</html>
