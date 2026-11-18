@@ -88,6 +88,18 @@ section.leg{padding:72px 0 8px}
 .leghead h2{font-size:clamp(32px,4vw,48px);text-transform:uppercase}
 .leghead p{grid-column:2;margin:6px 0 0;max-width:40em;color:var(--muted)}
 
+/* purpose */
+.purpose{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+.purpose .prose p{margin:0 0 16px;max-width:36em}
+.purpose .prose p:last-child{margin-bottom:0}
+.qs{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:8px 24px}
+.qs h3{font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:16px 0 8px}
+.qs ol{list-style:none;margin:0;padding:0;counter-reset:q}
+.qs li{counter-increment:q;display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px;padding:14px 0;border-top:1px solid var(--rule);font-size:17px}
+.qs li::before{content:counter(q,decimal-leading-zero);font-family:var(--mono);font-size:13px;color:var(--signal);padding-top:4px}
+.qs li b{font-weight:600}
+.notfor{margin-top:28px;padding:16px 20px;border-left:3px solid var(--signal);background:var(--signal-soft);border-radius:0 6px 6px 0;font-size:17px;max-width:44em}
+
 /* how it works */
 .flow{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:20px;overflow-x:auto}
 .flow svg{display:block;min-width:820px;width:100%;height:auto}
@@ -129,6 +141,28 @@ table.inputs td{padding:11px 10px 11px 0;border-bottom:1px solid var(--rule);ver
 .pill.measured{color:var(--paper);background:var(--field);border-color:var(--field)}
 .pill.exact{color:var(--ink);border-color:var(--ink)}
 
+/* accuracy */
+.acc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.tier{background:var(--sheet);border:1px solid var(--rule);border-top:4px solid var(--c);border-radius:8px;padding:20px 22px;display:grid;gap:10px;align-content:start}
+.tier .tag{font-family:var(--mono);font-size:12px;color:var(--c);letter-spacing:.04em;text-transform:uppercase}
+.tier h3{font-size:24px;text-transform:uppercase}
+.tier ul{margin:0;padding-left:18px;font-size:16px;display:grid;gap:8px}
+.tier .num{font-family:var(--mono);font-size:.9em;white-space:nowrap}
+.verdict{margin-top:24px;font-size:18px;max-width:46em}
+
+/* roadmap */
+.road{list-style:none;margin:0;padding:0;position:relative}
+.road::before{content:"";position:absolute;left:11px;top:8px;bottom:8px;width:2px;background:var(--rule)}
+.road li{position:relative;display:grid;grid-template-columns:24px 110px minmax(0,1fr);gap:16px;align-items:start;padding:14px 0}
+.road .mk{width:24px;height:24px;border-radius:50%;border:2px solid var(--muted);background:var(--paper);position:relative;z-index:1}
+.road li.done .mk{background:var(--field);border-color:var(--field)}
+.road li.next .mk{border-color:var(--signal);box-shadow:0 0 0 4px var(--signal-soft)}
+.road .st{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding-top:4px;color:var(--muted)}
+.road li.done .st{color:var(--field)}
+.road li.next .st{color:var(--signal)}
+.road b{font-weight:600;display:block}
+.road span.d{color:var(--muted);font-size:16px}
+
 /* gazebo + team */
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
 .card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:24px;display:grid;gap:10px;align-content:start}
@@ -142,7 +176,10 @@ footer{margin-top:80px;border-top:1px solid var(--rule);padding:28px 0 40px;colo
 footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 
 @media (max-width:880px){
-  .hero .wrap,.status,.two{grid-template-columns:1fr}
+  .hero .wrap,.status,.two,.purpose,.acc{grid-template-columns:1fr}
+  .road li{grid-template-columns:24px minmax(0,1fr)}
+  .road .st{grid-column:2}
+  .road li > div{grid-column:2}
   .thesis .wrap{grid-template-columns:1fr}
   .eq,.eq + .eq{padding:18px 0;border-left:0}
   .eq + .eq{border-top:1px solid var(--rule)}
@@ -164,10 +201,13 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
       PaddyScout
     </a>
     <nav class="top" aria-label="Sections">
+      <a href="#purpose">Purpose</a>
       <a href="#how">How it works</a>
       <a href="#simulator">Simulator</a>
       <a href="#inputs">Real vs assumed</a>
+      <a href="#accuracy">Accuracy</a>
       <a href="#gazebo">Gazebo</a>
+      <a href="#roadmap">Roadmap</a>
     </nav>
   </div>
 </header>
@@ -211,10 +251,38 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
     </div>
   </div>
 
-  <section class="leg" id="how">
+  <section class="leg" id="purpose">
     <div class="wrap">
       <div class="leghead">
         <div class="legno">01</div>
+        <h2>What the simulator is for</h2>
+        <p>It turns a hardware decision into a question with a measurable answer, before anyone buys a board or flies a field.</p>
+      </div>
+      <div class="purpose">
+        <div class="prose">
+          <p>A scouting drone photographs a crop field and runs an AI model on board to find disease, such as leaf-blight lesions on maize. The model has to run on a small computer the drone carries, and there are several choices: a Raspberry Pi 5 alone, or with a Coral or Hailo-8 accelerator, or an FPGA board such as the KV260.</p>
+          <p>The usual way to choose is raw speed: the board that processes the most image tiles per second. On a drone that can mislead. Every board adds weight and draws power. The drone cannot fly faster than its camera or airframe allow, so extra processing speed beyond that point is wasted. Flying faster also blurs the photos, so more disease is missed.</p>
+          <p>The simulator follows the whole chain, from flight altitude to image resolution, processing workload, safe flying speed, detected disease and battery energy. It answers the question that matters: <strong>which board covers a hectare on the least energy while still finding enough of the disease?</strong></p>
+        </div>
+        <div class="qs">
+          <h3>Questions it answers</h3>
+          <ol>
+            <li><span><b>Which board wins</b> for a given crop, lesion size and detection target, and by how much.</span></li>
+            <li><span><b>What limits the drone:</b> the aircraft, the camera or the processor, at each altitude.</span></li>
+            <li><span><b>Where the extra energy goes:</b> flight time, added weight, the chip's own power, or flying speed.</span></li>
+            <li><span><b>When the answer changes:</b> which board is best for small vs large lesions, low vs high flight.</span></li>
+            <li><span><b>What to measure first:</b> which inputs move the result most, so lab time goes where it counts.</span></li>
+          </ol>
+        </div>
+      </div>
+      <p class="notfor"><b>What it is not:</b> a replacement for field trials. It compares options fairly under identical conditions and shows how the answer depends on each input. Absolute numbers become trustworthy as measured values replace the estimates, and one real flight checks the prediction.</p>
+    </div>
+  </section>
+
+  <section class="leg" id="how">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">02</div>
         <h2>How it works</h2>
         <p>Explore broadly with a fast model, confirm the important cases in a realistic one, and replace every assumed input with a measurement.</p>
       </div>
@@ -249,7 +317,7 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
   <section class="leg" id="simulator">
     <div class="wrap">
       <div class="leghead">
-        <div class="legno">02</div>
+        <div class="legno">03</div>
         <h2>The mission simulator</h2>
         <p>Pick a board, a model, an altitude and a speed, and watch the drone survey a diseased field. The panels below the 3D view show the roofline, the recall–energy trade-off, and which board wins where.</p>
       </div>
@@ -271,7 +339,7 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
   <section class="leg" id="inputs">
     <div class="wrap">
       <div class="leghead">
-        <div class="legno">03</div>
+        <div class="legno">04</div>
         <h2>What is real, what is assumed</h2>
         <p>The geometry and physics are exact or textbook. The inputs are placeholders until we measure them, and every one is labelled.</p>
       </div>
@@ -291,10 +359,52 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
     </div>
   </section>
 
+  <section class="leg" id="accuracy">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">05</div>
+        <h2>How accurate it is</h2>
+        <p>Accuracy has two parts: whether the simulator computes correctly, and whether its inputs match reality. The first is checked; the second improves with each measurement.</p>
+      </div>
+      <div class="acc">
+        <div class="tier" style="--c:var(--field)">
+          <div class="tag">Checked</div>
+          <h3>The maths is right</h3>
+          <ul>
+            <li>The full flight simulation agrees with the closed-form model: recall within <span class="num">~2 points</span>, energy within <span class="num">1%</span>, for all four boards.</li>
+            <li>The Python version used for Gazebo matches the browser <span class="num">exactly</span> on 200 random configurations.</li>
+            <li>The Gazebo pipeline passes a self-test with a hidden known answer.</li>
+            <li>Survey geometry, tiles and the speed limit are exact arithmetic.</li>
+          </ul>
+        </div>
+        <div class="tier" style="--c:var(--signal)">
+          <div class="tag">Only as good as its inputs</div>
+          <h3>The numbers</h3>
+          <ul>
+            <li>Board speed and power are estimates today. They decide most of the result.</li>
+            <li>Detection uses a placeholder curve until our model is tested on held-out Cornell images.</li>
+            <li>Drone power uses textbook rotor physics, not yet calibrated with a measured hover.</li>
+            <li>Every input is labelled, and the counter above shows how many are measured.</li>
+          </ul>
+        </div>
+        <div class="tier" style="--c:var(--ink)">
+          <div class="tag">Not yet validated</div>
+          <h3>Against reality</h3>
+          <ul>
+            <li>No real flight has been compared with a prediction yet.</li>
+            <li>The test field is a synthetic layout; its effect on the board ranking still has to be shown to be small.</li>
+            <li>The Gazebo camera model has not been checked against real Pi photos.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="verdict"><strong>In short:</strong> the simulator is reliable for comparing boards and for showing how the answer depends on each input. Absolute figures, such as Wh per hectare or field recall, are estimates until the measurements below are done.</p>
+    </div>
+  </section>
+
   <section class="leg" id="gazebo">
     <div class="wrap">
       <div class="leghead">
-        <div class="legno">04</div>
+        <div class="legno">06</div>
         <h2>Gazebo confirmation</h2>
         <p>The fast simulator simplifies flight and imaging. Gazebo checks whether those simplifications change which board wins.</p>
       </div>
@@ -317,6 +427,16 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
     </div>
   </section>
 
+  <section class="leg" id="roadmap">
+    <div class="wrap">
+      <div class="leghead">
+        <div class="legno">07</div>
+        <h2>What we are working toward</h2>
+        <p>Each step replaces an estimate with a measurement or checks the simulator against something real, in order of how much it improves the result.</p>
+      </div>
+      <ol class="road" id="roadList"></ol>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -348,7 +468,19 @@ const SITE = {
     {part: "Gazebo flight", status: "exact", basis: "PX4 autopilot code in simulated physics", weight: 2},
     {part: "Gazebo camera model", status: "assumed", basis: "Pi HQ-like defaults until test photos are taken", weight: 2}
   ],
-  measuredCount: 0, totalInputs: 24
+  measuredCount: 0, totalInputs: 24,
+  // Update as you go. status: "done" | "next" | "planned"
+  roadmap: [
+    {status: "done", title: "Mission simulator", text: "Roofline, recall–energy trade-off, best setup per board, energy breakdown, crossover map, Monte Carlo error bars."},
+    {status: "done", title: "Gazebo + PX4 pipeline", text: "Real autopilot, camera model, 3D maize fields with lesions from real Cornell photos, batch runs and comparison tools."},
+    {status: "next", title: "Measure the boards", text: "Throughput, frame overhead, latency spread, idle and active power and mass for each board we have."},
+    {status: "next", title: "Measure detection vs resolution", text: "Our model on held-out Cornell images at several resolutions, through the camera model. Replaces the placeholder curve."},
+    {status: "planned", title: "Calibrate camera and drone power", text: "A ruler photo to confirm ground resolution; one logged hover to calibrate the power model; test photos for the camera model."},
+    {status: "planned", title: "Robustness checks", text: "Vary each unmeasured input by ±20%, sweep the detection target, and test many field layouts, to show whether the winning board changes."},
+    {status: "planned", title: "Fit the test field to real data", text: "Lesion density, clustering and size taken from the Cornell annotations instead of chosen values."},
+    {status: "planned", title: "Confirm in Gazebo", text: "Fly each board's best setup several times and compare with the simulator's prediction."},
+    {status: "planned", title: "One real flight", text: "Fly the payload once, logging power and frame timing, and compare with the prediction for that flight."}
+  ]
 };
 /* ===================================================== */
 
@@ -381,6 +513,18 @@ function renderContent() {
   const mk = (el, href, text) => { if (!href) return 0; const a = document.createElement("a"); a.className = "btn"; a.href = href;
     a.target = "_blank"; a.rel = "noopener"; a.textContent = text; el.appendChild(a); return 1; };
   mk($("gazeboLinks"), SITE.links.gazebo, "Gazebo project on GitHub");
+
+  const road = $("roadList");
+  const ST = {done: "Done", next: "Next", planned: "Planned"};
+  for (const r of SITE.roadmap) {
+    const li = document.createElement("li");
+    li.className = r.status;
+    li.innerHTML = '<span class="mk" aria-hidden="true"></span><span class="st"></span><div><b></b><span class="d"></span></div>';
+    li.querySelector(".st").textContent = ST[r.status] || r.status;
+    li.querySelector("b").textContent = r.title;
+    li.querySelector(".d").textContent = r.text;
+    road.appendChild(li);
+  }
 }
 renderContent();
 
